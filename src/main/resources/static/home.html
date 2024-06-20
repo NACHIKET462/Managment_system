@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Page</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .grid-item {
+            text-align: center;
+            padding: 20px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            position: relative;
+        }
+        .message {
+            margin-top: 10px;
+            font-style: italic;
+            color: #999;
+        }
+        .disabled {
+            cursor: not-allowed !important;
+            opacity: 0.5;
+        }
+        .role-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #333;
+        }
+        .create-button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .create-button {
+            margin: 0 10px;
+        }
+        .list-container {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col">
+                <h1>Welcome <span id="username"></span>!</h1>
+                <div id="roleInfo" class="role-info"></div>
+            </div>
+        </div>
+        <div class="row mt-4">
+            <!-- Billing Management Grid -->
+            <div id="billingGrid" class="col-md-3 grid-item" onclick="fetchData('billing')">
+                Billing Management
+                <div id="billingMessage" class="message"></div>
+            </div>
+            <!-- Customer Management Grid -->
+            <div id="customerGrid" class="col-md-3 grid-item" onclick="fetchData('customer')">
+                Customer Management
+                <div id="customerMessage" class="message"></div>
+            </div>
+            <!-- User Management Grid -->
+            <div id="userGrid" class="col-md-3 grid-item" onclick="fetchData('users')">
+                User Management
+                <div id="userMessage" class="message"></div>
+            </div>
+            <!-- Payroll Management Grid -->
+            <div id="payrollGrid" class="col-md-3 grid-item" onclick="fetchData('payroll')">
+                Payroll Management
+                <div id="payrollMessage" class="message"></div>
+            </div>
+        </div>
+        <div class="row create-button-container">
+            <div class="col">
+                <!-- Conditional Create Buttons -->
+                <button id="billingCreateBtn" class="btn btn-primary btn-sm create-button" onclick="showComingSoon('billing')" style="display: none;">Create Billing Item</button>
+                <button id="customerCreateBtn" class="btn btn-primary btn-sm create-button" onclick="showComingSoon('customer')" style="display: none;">Create Customer</button>
+                <button id="userCreateBtn" class="btn btn-primary btn-sm create-button" onclick="showComingSoon('users')" style="display: none;">Create User</button>
+                <button id="payrollCreateBtn" class="btn btn-primary btn-sm create-button" onclick="showComingSoon('payroll')" style="display: none;">Create Payroll Entry</button>
+            </div>
+        </div>
+        <div class="row list-container">
+            <div class="col">
+                <div id="dataContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        async function fetchUserDetails(userId) {
+            try {
+                const response = await fetch(`/api/findById?id=${userId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to load user data.');
+                }
+                const userDetails = await response.json();
+                console.log(userDetails);
+
+                // Set username on the page
+                document.getElementById('username').textContent = userDetails.username;
+
+                // Set role info based on role_id
+                let roleInfo = '';
+                switch (userDetails.role) {
+                    case 1:
+                        roleInfo = 'Designation: Sales';
+                        break;
+                    case 2:
+                        roleInfo = 'Designation: Accountant';
+                        break;
+                    case 3:
+                        roleInfo = 'Designation: HR';
+                        break;
+                    case 4:
+                        roleInfo = 'Designation: Administrators';
+                        break;
+                    default:
+                        roleInfo = 'Designation: Unknown Role';
+                        break;
+                }
+                document.getElementById('roleInfo').textContent = roleInfo;
+
+                // Loop through functionality access list and show message if accessType is 'no_access'
+                userDetails.functionalityAccessList.forEach(access => {
+                    switch (access.functionalityId) {
+                        case 1:
+                            displayAccessMessage(access.accessType, 'billingMessage', 'billingGrid');
+                            if (access.accessType === 'edit') {
+                                document.getElementById('billingCreateBtn').style.display = 'block';
+                            }
+                            break;
+                        case 2:
+                            displayAccessMessage(access.accessType, 'customerMessage', 'customerGrid');
+                            if (access.accessType === 'edit') {
+                                document.getElementById('customerCreateBtn').style.display = 'block';
+                            }
+                            break;
+                        case 3:
+                            displayAccessMessage(access.accessType, 'userMessage', 'userGrid');
+                            if (access.accessType === 'edit') {
+                                document.getElementById('userCreateBtn').style.display = 'block';
+                            }
+                            break;
+                        case 4:
+                            displayAccessMessage(access.accessType, 'payrollMessage', 'payrollGrid');
+                            if (access.accessType === 'edit') {
+                                document.getElementById('payrollCreateBtn').style.display = 'block';
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                displayErrorMessage('Failed to load user data.');
+            }
+        }
+
+        // Function to display access message based on accessType
+        function displayAccessMessage(accessType, messageId, gridId) {
+            const messageElement = document.getElementById(messageId);
+            const gridElement = document.getElementById(gridId);
+            if (accessType === 'no_access') {
+                messageElement.textContent = 'You do not have access.';
+                gridElement.classList.add('disabled');
+                gridElement.onclick = null;
+            } else {
+                messageElement.textContent = ''; // Clear message if user has access
+                gridElement.classList.remove('disabled');
+                gridElement.onclick = () => fetchData(gridId.replace('Grid', '').toLowerCase());
+            }
+        }
+
+        // Function to display error message
+        function displayErrorMessage(message) {
+            const errorMessage = document.getElementById('dataContainer');
+            errorMessage.innerHTML = `<p>${message}</p>`;
+        }
+
+        // Function to fetch data for each management type
+        async function fetchData(type) {
+            try {
+                const response = await fetch(`/api/${type}/all`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data.');
+                }
+                const data = await response.json();
+                console.log(data);
+                let html = '<ul>';
+                switch (type) {
+                    case 'billing':
+                        data.forEach(item => {
+                            html += `<li>${item.billName} - $${item.billAmount}</li>`;
+                        });
+                        break;
+                    case 'customer':
+                        data.forEach(item => {
+                            html += `<li>${item.customerName}</li>`;
+                        });
+                        break;
+                    case 'users':
+                        data.forEach(item => {
+                            html += `<li>${item.userName} - ${item.userAddress}</li>`;
+                        });
+                        break;
+                    case 'payroll':
+                        data.forEach(item => {
+                            html += `<li>${item.name} - $${item.salary.toFixed(2)}</li>`;
+                        });
+                        break;
+                    default:
+                        break;
+                }
+                html += '</ul>';
+                document.getElementById('dataContainer').innerHTML = html;
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                displayErrorMessage('Failed to fetch data.');
+            }
+        }
+
+        // Function to show "Coming Soon" message on Create button click
+        function showComingSoon(type) {
+            alert(`Creating ${type} - Coming Soon...`);
+        }
+
+        // Function to get query parameter from URL
+        function getParameterByName(name, url) {
+            if (!url) url = window.location.href;
+            name = name.replace(/[\[\]]/g, '\\$&');
+            var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+
+        // Function to initialize the page with user details and access messages
+        const userId = getParameterByName('id');
+        if (userId) {
+            fetchUserDetails(userId);
+        } else {
+            displayErrorMessage('User ID not provided.');
+        }
+    </script>
+</body>
+</html>
